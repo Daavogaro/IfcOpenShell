@@ -35,6 +35,8 @@ from bonsai.bim.module.classification.data import (
 )
 
 if TYPE_CHECKING:
+    import bsdd
+
     from bonsai.bim.module.classification.prop import (
         BIMClassificationProperties,
         ClassificationReference,
@@ -140,6 +142,14 @@ class ReferenceUI:
     def get_object_name(self, context: bpy.types.Context) -> str:
         return ""
 
+    def get_bsdd_class_type(self) -> bsdd.ClassTypes:
+        """Type of bSDD classes to search for."""
+        return "Class"
+
+    def draw_bsdd_class_type_ui(self, row: bpy.types.UILayout) -> None:
+        """Draw bSDD class type selector, if it's user editable."""
+        pass
+
     def draw(self, context: bpy.types.Context) -> None:
         if not self.data.is_loaded:
             self.data.load()
@@ -198,10 +208,15 @@ class ReferenceUI:
             row.operator("bim.enable_adding_manual_classification_reference", text="Add Reference", icon="ADD")
 
     def draw_add_bsdd_ui(self, context: object) -> None:
+        class_type = self.get_bsdd_class_type()
         row = self.layout.row(align=True)
         row.prop(self.bprops, "keyword", text="")
-        row.prop(self.bprops, "should_filter_ifc_class", text="", icon="FILTER")
-        row.operator("bim.search_bsdd_classifications", text="", icon="VIEWZOOM")
+        self.draw_bsdd_class_type_ui(row)
+        # Only "Class" entries are related to IFC entities.
+        if class_type == "Class":
+            row.prop(self.bprops, "should_filter_ifc_class", text="", icon="FILTER")
+        op = row.operator("bim.search_bsdd_classifications", text="", icon="VIEWZOOM")
+        op.class_type = class_type
 
         if len(self.bprops.classifications):
             self.layout.template_list(
@@ -336,6 +351,12 @@ class BIM_PT_material_classifications(Panel, ReferenceUI):
         if props.is_editing and (material := props.active_material) and material.ifc_definition_id:
             return True
         return False
+
+    def get_bsdd_class_type(self) -> bsdd.ClassTypes:
+        return self.bprops.class_type
+
+    def draw_bsdd_class_type_ui(self, row: bpy.types.UILayout) -> None:
+        row.prop(self.bprops, "class_type", text="")
 
 
 class BIM_PT_cost_classifications(Panel, ReferenceUI):

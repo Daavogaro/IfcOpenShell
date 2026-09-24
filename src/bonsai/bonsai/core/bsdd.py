@@ -21,6 +21,8 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
+    import bsdd as bsdd_
+
     import bonsai.tool as tool
 
 
@@ -39,7 +41,9 @@ def load_bsdd(bsdd: type[tool.Bsdd]) -> None:
     bsdd.create_dictionaries(bsdd.get_dictionaries())
 
 
-def search_bsdd_class(bsdd: type[tool.Bsdd], keyword: str) -> int:
+def search_bsdd_class(bsdd: type[tool.Bsdd], keyword: str, class_type: bsdd_.ClassTypes = "Class") -> int:
     bsdd.clear_classes()
-    related_entities = bsdd.get_related_ifc_entities()
-    return bsdd.search_class(keyword, related_entities)
+    # Only "Class" entries are related to IFC entities,
+    # filtering e.g. materials by them would return no results.
+    related_entities = bsdd.get_related_ifc_entities() if class_type == "Class" else []
+    return bsdd.search_class(keyword, related_entities, class_type=class_type)

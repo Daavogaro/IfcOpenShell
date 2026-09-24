@@ -33,6 +33,12 @@ from bonsai.bim.module.bsdd.data import BSDDData
 from bonsai.bim.module.classification.data import ClassificationsData
 from bonsai.bim.prop import Attribute
 
+if TYPE_CHECKING:
+    import bsdd
+
+# Keep in sync with `bsdd.ClassTypes`.
+BSDD_CLASS_TYPES = ("Class", "GroupOfProperties", "AlternativeUse", "Material")
+
 
 def get_active_dictionary(self: "BIMBSDDProperties", context: object) -> tool.Blender.BLENDER_ENUM_ITEMS:
     if not BSDDData.is_loaded:
@@ -149,6 +155,16 @@ class BIMBSDDProperties(PropertyGroup):
     active_property_index: IntProperty(name="Active Property Index")
     selected_properties: CollectionProperty(name="Selected Properties", type=Attribute)
     keyword: StringProperty(name="Keyword", description="Query for bsdd classes search, case and accent insensitive")
+    class_type: EnumProperty(
+        name="Class Type",
+        description=(
+            "Type of bSDD classes to search for. "
+            "Note that not every dictionary provides dedicated material classes, "
+            "some of them publish materials as regular classes"
+        ),
+        items=[(i, i, "") for i in BSDD_CLASS_TYPES],
+        default="Material",
+    )
     should_filter_ifc_class: BoolProperty(
         name="Filter Active IFC Class",
         description="Whether to search only for bSDD classes that match active object's IFC class",
@@ -176,6 +192,7 @@ class BIMBSDDProperties(PropertyGroup):
         active_property_index: int
         selected_properties: bpy.types.bpy_prop_collection_idprop[Attribute]
         keyword: str
+        class_type: bsdd.ClassTypes
         should_filter_ifc_class: bool
         use_only_ifc_properties: bool
         classification_psets: bpy.types.bpy_prop_collection_idprop[BSDDPset]

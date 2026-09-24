@@ -23,6 +23,7 @@ import ifcopenshell.api.pset
 import ifcopenshell.util.element
 
 import bonsai.tool as tool
+from bonsai.bim.module.bsdd.prop import BSDD_CLASS_TYPES
 from bonsai.core import bsdd as core
 
 
@@ -41,9 +42,15 @@ class SearchBSDDClassifications(bpy.types.Operator):
     bl_label = "Search bSDD Class"
     bl_description = "Search for bSDD classes by the provided keyword"
     bl_options = {"REGISTER", "UNDO"}
+    class_type: bpy.props.EnumProperty(
+        name="Class Type",
+        description="Type of bSDD classes to search for",
+        items=[(i, i, "") for i in BSDD_CLASS_TYPES],
+        default="Class",
+    )
 
     def execute(self, context):
-        total = core.search_bsdd_class(tool.Bsdd, tool.Bsdd.get_bsdd_props().keyword)
+        total = core.search_bsdd_class(tool.Bsdd, tool.Bsdd.get_bsdd_props().keyword, class_type=self.class_type)
         self.report({"INFO"}, f"{total} bSDD classes found.")
         return {"FINISHED"}
 

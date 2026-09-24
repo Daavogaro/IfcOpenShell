@@ -209,6 +209,7 @@ class Bsdd(bonsai.core.tool.Bsdd):
         cls,
         keyword: str,
         related_ifc_entities: Union[list[str], None],
+        class_type: bsdd.ClassTypes = "Class",
         offset: int = 0,
         limit: int = 100,
         should_paginate: bool = True,
@@ -225,6 +226,7 @@ class Bsdd(bonsai.core.tool.Bsdd):
                 response = cls.client.get_classes(
                     dictionary_uri=dictionary_uri,
                     use_nested_classes=False,
+                    class_type=class_type,
                     search_text=keyword,
                     related_ifc_entity=related_ifc_entity,
                     offset=offset,
@@ -244,7 +246,9 @@ class Bsdd(bonsai.core.tool.Bsdd):
         # For now, hard limit at 1000 results because any more and Blender
         # starts getting slow and they really should filter better
         if offset < 1000 and should_paginate and total_results == limit:
-            cls.search_class(keyword, related_ifc_entities, offset=offset + limit, should_paginate=False)
+            cls.search_class(
+                keyword, related_ifc_entities, class_type=class_type, offset=offset + limit, should_paginate=False
+            )
 
         return offset + total_results
 
