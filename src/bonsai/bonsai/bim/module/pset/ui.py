@@ -233,6 +233,87 @@ def draw_psetqto_editable_ui(box: bpy.types.UILayout, props: PsetProperties, pro
     draw_property(prop, row, copy_operator="bim.copy_property_to_selection")
 
 
+def draw_pset_name_ui(
+    layout: bpy.types.UILayout, props: PsetProperties, obj: str, obj_type: tool.Ifc.OBJECT_TYPE
+) -> None:
+    """Draw pset name selector and either the add pset button or the bSDD properties UI."""
+    row = layout.row(align=True)
+    prop_with_search(row, props, "pset_name", text="")
+    if props.pset_name != "BBIM_BSDD" and not props.pset_name.startswith(tool.Bsdd.identifier_url()):
+        op = row.operator("bim.add_pset", icon="ADD", text="")
+        op.obj = obj
+        op.obj_type = obj_type
+    else:
+        draw_bsdd_ui(layout, obj, obj_type)
+
+
+def draw_bsdd_ui(layout: bpy.types.UILayout, obj: str, obj_type: tool.Ifc.OBJECT_TYPE) -> None:
+    """Draw bSDD properties search and the properties selected to be added."""
+    bprops = tool.Bsdd.get_bsdd_props()
+    row = layout.row(align=True)
+    row.prop(bprops, "property_filter_mode", text="")
+    if bprops.property_filter_mode == "CLASS":
+        # Only objects have an IFC class to filter bSDD classes by.
+        if obj_type == "Object":
+            row.prop(bprops, "should_filter_ifc_class", text="", icon="FILTER")
+        op = row.operator("bim.import_bsdd_classes", text="", icon="FILE_REFRESH")
+        op.obj = obj
+        op.obj_type = obj_type
+
+        if len(bprops.classes):
+            layout.template_list(
+                "BIM_UL_bsdd_classes",
+                "",
+                bprops,
+                "classes",
+                bprops,
+                "active_class_index",
+            )
+            if len(bprops.properties):
+                layout.template_list(
+                    "BIM_UL_bsdd_properties",
+                    "",
+                    bprops,
+                    "properties",
+                    bprops,
+                    "active_property_index",
+                )
+            else:
+                row = layout.row()
+                row.label(text="No bSDD Props Found")
+        else:
+            row = layout.row()
+            row.label(text="No Results")
+    elif bprops.property_filter_mode == "KEYWORD":
+        row.prop(bprops, "keyword", text="")
+        op = row.operator("bim.search_bsdd_properties", text="", icon="VIEWZOOM")
+        op.obj = obj
+        op.obj_type = obj_type
+
+        if len(bprops.properties):
+            layout.template_list(
+                "BIM_UL_bsdd_properties",
+                "",
+                bprops,
+                "properties",
+                bprops,
+                "active_property_index",
+            )
+        else:
+            row = layout.row()
+            row.label(text="No bSDD Props Found")
+
+    for selected_property in bprops.selected_properties:
+        row = layout.row(align=True)
+        # row.prop(selected_property, "metadata", text="")
+        draw_attribute(selected_property, row)
+
+    row = layout.row()
+    op = row.operator("bim.add_bsdd_properties", icon="ADD")
+    op.obj = obj
+    op.obj_type = obj_type
+
+
 class BIM_PT_object_psets(Panel):
     bl_label = "Property Sets"
     bl_idname = "BIM_PT_object_psets"
@@ -262,76 +343,9 @@ class BIM_PT_object_psets(Panel):
 
         assert (obj := context.active_object)
         props = tool.Pset.get_pset_props(obj.name, "Object")
-        self.bprops = tool.Bsdd.get_bsdd_props()
         assert self.layout
 
-        row = self.layout.row(align=True)
-        prop_with_search(row, props, "pset_name", text="")
-        if props.pset_name != "BBIM_BSDD" and not props.pset_name.startswith(tool.Bsdd.identifier_url()):
-            op = row.operator("bim.add_pset", icon="ADD", text="")
-            op.obj = obj.name
-            op.obj_type = "Object"
-        else:
-            row = self.layout.row(align=True)
-            row.prop(self.bprops, "property_filter_mode", text="")
-            if self.bprops.property_filter_mode == "CLASS":
-                row.prop(self.bprops, "should_filter_ifc_class", text="", icon="FILTER")
-                op = row.operator("bim.import_bsdd_classes", text="", icon="FILE_REFRESH")
-                op.obj = obj.name
-                op.obj_type = "Object"
-
-                if len(self.bprops.classes):
-                    self.layout.template_list(
-                        "BIM_UL_bsdd_classes",
-                        "",
-                        self.bprops,
-                        "classes",
-                        self.bprops,
-                        "active_class_index",
-                    )
-                    if len(self.bprops.properties):
-                        self.layout.template_list(
-                            "BIM_UL_bsdd_properties",
-                            "",
-                            self.bprops,
-                            "properties",
-                            self.bprops,
-                            "active_property_index",
-                        )
-                    else:
-                        row = self.layout.row()
-                        row.label(text="No bSDD Props Found")
-                else:
-                    row = self.layout.row()
-                    row.label(text="No Results")
-            elif self.bprops.property_filter_mode == "KEYWORD":
-                row.prop(self.bprops, "keyword", text="")
-                op = row.operator("bim.search_bsdd_properties", text="", icon="VIEWZOOM")
-                op.obj = obj.name
-                op.obj_type = "Object"
-
-                if len(self.bprops.properties):
-                    self.layout.template_list(
-                        "BIM_UL_bsdd_properties",
-                        "",
-                        self.bprops,
-                        "properties",
-                        self.bprops,
-                        "active_property_index",
-                    )
-                else:
-                    row = self.layout.row()
-                    row.label(text="No bSDD Props Found")
-
-            for selected_property in self.bprops.selected_properties:
-                row = self.layout.row(align=True)
-                # row.prop(selected_property, "metadata", text="")
-                draw_attribute(selected_property, row)
-
-            row = self.layout.row()
-            op = row.operator("bim.add_bsdd_properties", icon="ADD")
-            op.obj = obj.name
-            op.obj_type = "Object"
+        draw_pset_name_ui(self.layout, props, obj.name, "Object")
 
         global_props = tool.Pset.get_global_pset_props()
         if not props.active_pset_id and props.active_pset_name and props.active_pset_type == "PSET":
@@ -495,11 +509,7 @@ class BIM_PT_material_psets(Panel):
             MaterialPsetsData.load()
 
         props = tool.Pset.get_pset_props("", "Material")
-        row = self.layout.row(align=True)
-        prop_with_search(row, props, "pset_name", text="")
-        op = row.operator("bim.add_pset", icon="ADD", text="")
-        op.obj = ""
-        op.obj_type = "Material"
+        draw_pset_name_ui(self.layout, props, "", "Material")
 
         if not props.active_pset_id and props.active_pset_name and props.active_pset_type == "PSET":
             draw_psetqto_ui(context, 0, {}, props, self.layout, "Material")

@@ -278,24 +278,34 @@ class Bsdd(bonsai.core.tool.Bsdd):
         return bsdd_property
 
     @classmethod
-    def import_classes(cls, obj, obj_type) -> None:
+    def get_classified_elements(cls, obj: str, obj_type: tool.Ifc.OBJECT_TYPE) -> list[ifcopenshell.entity_instance]:
+        """Elements to load the assigned bSDD classes from."""
+        if obj_type == "Object":
+            elements = (tool.Ifc.get_entity(o) for o in tool.Blender.get_selected_objects(include_active=True))
+            return [e for e in elements if e]
+        if ifc_definition_id := tool.Blender.get_obj_ifc_definition_id(obj, obj_type):
+            return [tool.Ifc.get().by_id(ifc_definition_id)]
+        return []
+
+    @classmethod
+    def import_classes(cls, obj: str, obj_type: tool.Ifc.OBJECT_TYPE) -> None:
         pprops = tool.Pset.get_pset_props(obj, obj_type)
         props = cls.get_bsdd_props()
         props.classes.clear()
 
         classes = set()
-        for obj in tool.Blender.get_selected_objects(include_active=True):
-            if element := tool.Ifc.get_entity(obj):
-                for reference in ifcopenshell.util.classification.get_references(element):
-                    if (uri := reference.Location) and uri.startswith(cls.identifier_url()):
-                        classes.add((reference[1] or reference[2] or "Unnamed", uri))
+        for element in cls.get_classified_elements(obj, obj_type):
+            for reference in ifcopenshell.util.classification.get_references(element):
+                if (uri := reference.Location) and uri.startswith(cls.identifier_url()):
+                    classes.add((reference[1] or reference[2] or "Unnamed", uri))
 
         dictionary_uris = (
             [d.uri for d in props.dictionaries if d.is_active]
             if pprops.pset_name == "BBIM_BSDD"
             else [pprops.pset_name]
         )
-        related_ifc_entities = cls.get_related_ifc_entities()
+        # Only objects have an IFC class to filter bSDD classes by.
+        related_ifc_entities = cls.get_related_ifc_entities() if obj_type == "Object" else []
         for dictionary_uri in dictionary_uris:
             for related_ifc_entity in related_ifc_entities or [None]:
                 bsdd_classes = cls.client.get_classes(
